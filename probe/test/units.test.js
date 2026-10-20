@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -63,5 +63,29 @@ test("the deploy log keeps the newest ten and survives a restart", async (t) => 
   assert.deepEqual(
     [reloaded.list().length, reloaded.list()[0].sha, reloaded.list()[9].sha],
     [10, "sha-11", "sha-2"],
+  );
+});
+
+test("entries a restart interrupted are marked so, finished ones are kept", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "festival-status-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = join(dir, "deploys.json");
+  await writeFile(
+    file,
+    JSON.stringify([
+      { id: "1", status: "queued" },
+      { id: "2", status: "accepted" },
+      { id: "3", status: "deploying" },
+      { id: "4", status: "success" },
+      { id: "5", status: "coalesced" },
+    ]),
+  );
+  const log = new DeployLog(file);
+
+  await log.load();
+
+  assert.deepEqual(
+    log.list().map((entry) => entry.status),
+    ["interrupted", "interrupted", "interrupted", "success", "coalesced"],
   );
 });

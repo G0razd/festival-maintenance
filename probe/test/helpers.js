@@ -79,7 +79,7 @@ function scriptedFetch(responses) {
   return { calls, fetch };
 }
 
-export async function harness(t, { responses = [], deckhandOverrides = {}, gitlabOverrides = {} } = {}) {
+export async function harness(t, { responses = [], deckhandOverrides = {}, gitlabOverrides = {}, timingOverrides = {}, appOptions = {} } = {}) {
   const config = { ...gitlab, ...gitlabOverrides };
   const log = new DeployLog(null);
   const scheduler = fakeScheduler();
@@ -88,7 +88,7 @@ export async function harness(t, { responses = [], deckhandOverrides = {}, gitla
     log,
     deckhand: { ...deckhand, ...deckhandOverrides },
     gitlab: config,
-    timing,
+    timing: { ...timing, ...timingOverrides },
     fetch: remote.fetch,
     setTimer: scheduler.set,
     clearTimer: scheduler.clear,
@@ -100,7 +100,7 @@ export async function harness(t, { responses = [], deckhandOverrides = {}, gitla
       results: [{ key: "site", url: "https://festival-26.deckhand.lemmaweb.com/", ok: true, status: 200, ms: 40 }],
     }),
   };
-  const server = await startServer(createApp({ gitlab: config, checker, log, deployer }), 0);
+  const server = await startServer(createApp({ gitlab: config, checker, log, deployer, ...appOptions }), 0);
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const base = `http://127.0.0.1:${server.address().port}`;
 

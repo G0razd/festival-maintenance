@@ -53,10 +53,18 @@ export class Deployer {
     for (const id of ids.slice(0, -1)) {
       this.log.update(id, { status: "coalesced", deployedWith: lead?.sha?.slice(0, 8) ?? null });
     }
-    this.running = this.deploy(leadId).finally(() => {
-      this.running = null;
-      if (this.pending.length > 0) this.schedule();
-    });
+    this.running = this.deploy(leadId)
+      .catch((error) => {
+        this.log.update(leadId, {
+          status: "failed",
+          deckhand: shortDetail(`probe error: ${error.message}`),
+          finishedAt: new Date(this.now()).toISOString(),
+        });
+      })
+      .finally(() => {
+        this.running = null;
+        if (this.pending.length > 0) this.schedule();
+      });
     return this.running;
   }
 
@@ -123,10 +131,15 @@ export class Deployer {
     const { apiUrl, apiToken, projectId, serviceId } = this.deckhand;
     if (!apiToken || !projectId || !serviceId) return "untracked";
     const deadline = startedAt + this.timing.trackTimeoutMs;
+    let seen = false;
     while (this.now() < deadline) {
-      const build = await this.latestBuild(apiUrl, apiToken, projectId, serviceId, startedAt);
-      if (build && FINAL_BUILD_STATUS.has(build.status)) return build.status;
-      if (!build && this.now() - startedAt > this.timing.buildStartTimeoutMs) return "no-build";
+      const { answered, build } = await this.latestBuild(apiUrl, apiToken, projectId, serviceId, startedAt);
+      if (build) {
+        seen = true;
+        if (FINAL_BUILD_STATUS.has(build.status)) return build.status;
+      } else if (answered && !seen && this.now() - startedAt > this.timing.buildStartTimeoutMs) {
+        return "no-build";
+      }
       await this.sleep(this.timing.pollMs);
     }
     return "timeout";
@@ -140,17 +153,17 @@ export class Deployer {
       });
       if (!response.ok) {
         await response.body?.cancel();
-        return null;
+        return { answered: false, build: null };
       }
       const builds = await response.json();
-      if (!Array.isArray(builds)) return null;
-      return (
-        builds.find(
-          (build) => build.serviceId === serviceId && Date.parse(build.startedAt) >= startedAt - BUILD_START_SLACK_MS,
-        ) ?? null
+      if (!Array.isArray(builds)) return { answered: false, build: null };
+      const build = builds.find(
+        (candidate) =>
+          candidate.serviceId === serviceId && Date.parse(candidate.startedAt) >= startedAt - BUILD_START_SLACK_MS,
       );
+      return { answered: true, build: build ?? null };
     } catch {
-      return null;
+      return { answered: false, build: null };
     }
   }
 }

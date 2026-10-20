@@ -250,3 +250,57 @@ test("the status JSON is not cached and carries no secret", async (t) => {
   );
   for (const secret of [HOOK_TOKEN, DECKHAND_SECRET, API_TOKEN]) assert.ok(!text.includes(secret));
 });
+
+test("a failed build-log poll during a running build does not end it as no-build", async (t) => {
+  const fresh = () => new Date().toISOString();
+  const { post, log, settle } = await harness(t, {
+    deckhandOverrides: { apiToken: API_TOKEN, projectId: "project-1", serviceId: "service-1" },
+    timingOverrides: { buildStartTimeoutMs: -1 },
+    responses: [
+      ACCEPTED,
+      () => Response.json([{ serviceId: "service-1", status: "building", startedAt: fresh() }]),
+      { status: 502, body: { message: "Bad Gateway" } },
+      new TypeError("fetch failed"),
+      () => Response.json([{ serviceId: "service-1", status: "success", startedAt: fresh() }]),
+    ],
+  });
+
+  await post(pushPayload());
+  await settle();
+
+  assert.equal(log.list()[0].status, "success");
+});
+
+test("an unexpected error inside a deploy marks it failed and frees the queue", async (t) => {
+  const { post, log, deployer, settle, scheduler } = await harness(t, { responses: [ACCEPTED] });
+  deployer.track = async () => {
+    throw new Error("boom");
+  };
+
+  await post(pushPayload());
+  await settle();
+  await post(pushPayload({ sha: SHA_B }));
+
+  assert.equal(log.list()[1].status, "failed");
+  assert.equal(log.list()[1].deckhand, "probe error: boom");
+  assert.equal(deployer.running, null);
+  assert.equal(scheduler.pending.size, 1);
+});
+
+test("a body over the limit answers 413", async (t) => {
+  const { post, log } = await harness(t, { appOptions: { maxBodyBytes: 1024 } });
+
+  const response = await post({ ...pushPayload(), padding: "x".repeat(2048) });
+
+  assert.equal(response.status, 413);
+  assert.equal(log.list().length, 0);
+});
+
+test("the status JSON names the checks without their URLs", async (t) => {
+  const { base } = await harness(t);
+
+  const text = await (await fetch(`${base}/_status/status.json`)).text();
+
+  assert.deepEqual(JSON.parse(text).checks, [{ key: "site", ok: true, status: 200, ms: 40, error: null }]);
+  assert.ok(!text.includes("lemmaweb.com"));
+});

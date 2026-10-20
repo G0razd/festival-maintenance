@@ -21,7 +21,7 @@
 | --- | --- |
 | Token missing or wrong | `401` |
 | Not POST | `405`, `Allow: POST` |
-| Body over 5 MB | `413` |
+| Body over 5 MB | `413`, connection closed |
 | Body is not JSON | `400` |
 | Other project, other branch, deleted branch, pipeline still running, other event | `200 {"result":"ignored","reason":…}` |
 | Push (default) | `202 {"result":"queued"}` |
@@ -33,11 +33,12 @@
   - When the window closes, one DeckHand call deploys the newest commit. The older entries become `coalesced`, with the sha they went out with.
   - A festival-26 deploy takes about 45 minutes. Events that arrive during it wait, and give exactly one more deploy after it.
 - **Retry.** A network error, a timeout or a 5xx from DeckHand is retried once, after 5 s. A 4xx is not retried; it means a wrong secret or a wrong repo/branch, and a retry would not help. If DeckHand matches no service, that counts as failed.
-- **Tracking limits.** No build within 5 minutes gives `no-build`, for example when DeckHand failed before the build. No final state within 120 minutes gives `timeout`.
+- **Tracking limits.** If DeckHand's build list answers but shows no build within 5 minutes, the entry gets `no-build`, for example when DeckHand failed before the build. A failed poll (5xx, timeout, network) just polls again, and once a build has been seen only `success`, `failed` or the 120-minute `timeout` ends the tracking.
+- **Restarts.** Queues, timers and tracking live in memory. On start, entries still `queued`, `deploying` or `accepted` are marked `interrupted`; nothing is re-sent. An unexpected error inside a deploy marks it `failed` (`probe error: …`) and frees the queue.
 - **Store.** The last 10 entries are kept in `/data/deploys.json` on the `status-data` volume, written atomically.
   - On DeckHand `7ff739c` a redeploy starts with empty volumes (deckhand KI 136), so the log is lost on every redeploy of this service.
   - It survives container restarts.
-- **No secrets leave the probe.** The JSON carries short shas, author names from GitLab, statuses and DeckHand's reply message, never a token. A test pins this.
+- **No secrets leave the probe.** The JSON carries the check results (key, ok, HTTP status, latency, error kind; not the URLs), short shas, author names from GitLab, statuses and DeckHand's reply message, never a token. Tests pin both.
 
 ## Tests
 `probe/test/hook.test.js` covers:
@@ -46,8 +47,10 @@
 - a wrong branch and a wrong project;
 - the debounce, and a push during a running deploy;
 - a failed DeckHand call with one retry, recovery on the retry, no retry on 401, and no matched service;
-- the final status from build logs;
+- the final status from build logs, also across a failed poll mid-build;
+- an unexpected error inside a deploy;
+- a body over the limit (413) and a JSON without the check URLs;
 - pipeline handling and `DEPLOY_ON=pipeline`;
 - no secrets in the JSON.
 
-`probe/test/units.test.js` covers the token compare, the checker and the deploy log file.
+`probe/test/units.test.js` covers the token compare, the checker, the deploy log file and the `interrupted` marking after a restart.

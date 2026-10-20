@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
+const UNFINISHED = new Set(["queued", "deploying", "accepted"]);
+
 export class DeployLog {
   constructor(file, { limit = 10, now = () => new Date() } = {}) {
     this.file = file;
@@ -15,7 +17,11 @@ export class DeployLog {
     if (!this.file) return;
     try {
       const saved = JSON.parse(await readFile(this.file, "utf8"));
-      if (Array.isArray(saved)) this.entries = saved.slice(0, this.limit);
+      if (Array.isArray(saved)) {
+        this.entries = saved
+          .slice(0, this.limit)
+          .map((entry) => (UNFINISHED.has(entry.status) ? { ...entry, status: "interrupted" } : entry));
+      }
     } catch (error) {
       if (error.code !== "ENOENT") console.error(`deploy log unreadable, starting empty: ${error.message}`);
     }

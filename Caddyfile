@@ -11,7 +11,7 @@
 	}
 }
 
-(page) {
+(page-headers) {
 	header {
 		Cache-Control "no-store"
 		X-Robots-Tag "noindex"
@@ -19,10 +19,23 @@
 		Referrer-Policy "no-referrer"
 		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 	}
+}
+
+(page) {
+	import page-headers
 	root * /srv
 	@document not path /_status/app.js
 	rewrite @document /index.html
 	file_server
+}
+
+(outage) {
+	import page-headers
+	root * /srv
+	rewrite * /index.html
+	file_server {
+		status 503
+	}
 }
 
 (probe) {
@@ -63,6 +76,19 @@
 	handle {
 		reverse_proxy {$SITE_UPSTREAM:https://festival-26.deckhand.lemmaweb.com} {
 			header_up Host {http.reverse_proxy.upstream.host}
+
+			@unavailable status 502 503 504
+			handle_response @unavailable {
+				import outage
+			}
+
+			@unrouted {
+				status 404
+				header Content-Type text/plain*
+			}
+			handle_response @unrouted {
+				import outage
+			}
 		}
 	}
 

@@ -19,6 +19,7 @@
     timeout: "Bez výsledku · No result",
     untracked: "Přijato DeckHandem · Accepted by DeckHand",
     recorded: "Zaznamenáno · Recorded",
+    interrupted: "Přerušeno restartem · Interrupted by a restart",
   };
 
   function formatTime(iso) {
@@ -32,7 +33,11 @@
   }
 
   function deployStatus(deploy) {
-    if (deploy.status === "coalesced") return `Sloučeno do ${deploy.deployedWith} · Merged into ${deploy.deployedWith}`;
+    if (deploy.status === "coalesced") {
+      return deploy.deployedWith
+        ? `Sloučeno do ${deploy.deployedWith} · Merged into ${deploy.deployedWith}`
+        : "Sloučeno · Merged";
+    }
     if (deploy.kind === "pipeline" && deploy.status === "recorded") return `CI pipeline: ${deploy.pipelineStatus}`;
     return DEPLOY_STATUS[deploy.status] ?? deploy.status;
   }

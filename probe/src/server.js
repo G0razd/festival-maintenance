@@ -19,15 +19,16 @@ function send(res, status, body, headers = {}) {
   res.end(payload);
 }
 
-function readBody(req) {
+function readBody(req, maxBytes) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
     req.on("data", (chunk) => {
       size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
+      if (size > maxBytes) {
+        req.removeAllListeners("data");
+        req.pause();
         reject(new TooLarge());
-        req.destroy();
         return;
       }
       chunks.push(chunk);
@@ -35,6 +36,10 @@ function readBody(req) {
     req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     req.on("error", reject);
   });
+}
+
+function publicCheck({ key, ok, status, ms, error }) {
+  return { key, ok, status, ms: ms ?? null, error: error ?? null };
 }
 
 function publicDeploy(entry) {
@@ -53,16 +58,19 @@ function publicDeploy(entry) {
   };
 }
 
-export function createApp({ gitlab, checker, log, deployer, now = () => Date.now() }) {
+export function createApp({ gitlab, checker, log, deployer, now = () => Date.now(), maxBodyBytes = MAX_BODY_BYTES }) {
   async function handleHook(req, res) {
     if (req.method !== "POST") return send(res, 405, { error: "method not allowed" }, { Allow: "POST" });
     if (!tokenMatches(gitlab.token, req.headers["x-gitlab-token"])) return send(res, 401, { error: "invalid token" });
 
     let body;
     try {
-      body = JSON.parse(await readBody(req));
+      body = JSON.parse(await readBody(req, maxBodyBytes));
     } catch (error) {
-      if (error instanceof TooLarge) return send(res, 413, { error: "payload too large" });
+      if (error instanceof TooLarge) {
+        res.on("finish", () => req.destroy());
+        return send(res, 413, { error: "payload too large" }, { Connection: "close" });
+      }
       return send(res, 400, { error: "invalid JSON" });
     }
 
@@ -89,7 +97,7 @@ export function createApp({ gitlab, checker, log, deployer, now = () => Date.now
     return send(res, 200, {
       generatedAt: new Date(now()).toISOString(),
       checkedAt,
-      checks: results,
+      checks: results.map(publicCheck),
       deployOn: gitlab.deployOn,
       deploys: log.list().map(publicDeploy),
     });
