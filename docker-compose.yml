@@ -1,0 +1,40 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    expose:
+      - "80"
+      - "443"
+    volumes:
+      - caddy-data:/data
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: deckhand-proxy
+      traefik.http.services.festival-maintenance.loadbalancer.server.port: "80"
+      traefik.tcp.services.festival-maintenance-tls.loadbalancer.server.port: "443"
+
+      traefik.tcp.routers.festival-maintenance-muni.rule: HostSNI(`festival.fi.muni.cz`) || HostSNI(`www.festival.fi.muni.cz`)
+      traefik.tcp.routers.festival-maintenance-muni.entrypoints: websecure
+      traefik.tcp.routers.festival-maintenance-muni.tls.passthrough: "true"
+      traefik.tcp.routers.festival-maintenance-muni.service: festival-maintenance-tls
+      traefik.http.routers.festival-maintenance-muni-http.rule: Host(`festival.fi.muni.cz`) || Host(`www.festival.fi.muni.cz`)
+      traefik.http.routers.festival-maintenance-muni-http.entrypoints: web
+      traefik.http.routers.festival-maintenance-muni-http.priority: "10000"
+      traefik.http.routers.festival-maintenance-muni-http.service: festival-maintenance
+
+      traefik.http.routers.festival-maintenance-test.rule: Host(`festival.deckhand.lemmaweb.com`)
+      traefik.http.routers.festival-maintenance-test.entrypoints: websecure
+      traefik.http.routers.festival-maintenance-test.priority: "10000"
+      traefik.http.routers.festival-maintenance-test.tls.certresolver: myresolver
+      traefik.http.routers.festival-maintenance-test.tls.domains[0].main: festival.deckhand.lemmaweb.com
+      traefik.http.routers.festival-maintenance-test.service: festival-maintenance
+      traefik.http.routers.festival-maintenance-test-http.rule: Host(`festival.deckhand.lemmaweb.com`)
+      traefik.http.routers.festival-maintenance-test-http.entrypoints: web
+      traefik.http.routers.festival-maintenance-test-http.priority: "10000"
+      traefik.http.routers.festival-maintenance-test-http.middlewares: festival-maintenance-https
+      traefik.http.routers.festival-maintenance-test-http.service: festival-maintenance
+      traefik.http.middlewares.festival-maintenance-https.redirectscheme.scheme: https
+      traefik.http.middlewares.festival-maintenance-https.redirectscheme.permanent: "true"
+
+volumes:
+  caddy-data:

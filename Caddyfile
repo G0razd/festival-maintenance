@@ -1,0 +1,63 @@
+{
+	admin off
+	servers {
+		protocols h1 h2
+	}
+	on_demand_tls {
+		ask http://127.0.0.1:9180/allow
+	}
+	cert_issuer acme {
+		disable_tlsalpn_challenge
+	}
+}
+
+(maintenance) {
+	encode zstd gzip
+
+	handle /archiv* {
+		reverse_proxy https://archiv.deckhand.lemmaweb.com {
+			header_up Host archiv.deckhand.lemmaweb.com
+		}
+	}
+
+	handle {
+		header {
+			Cache-Control "no-store"
+			X-Robots-Tag "noindex"
+			X-Content-Type-Options "nosniff"
+			Referrer-Policy "no-referrer"
+		}
+		root * /srv
+		rewrite * /index.html
+		file_server
+	}
+
+	handle_errors {
+		header Cache-Control "no-store"
+		root * /srv
+		rewrite * /index.html
+		file_server
+	}
+}
+
+http://:9180 {
+	bind 127.0.0.1
+	@allowed query domain=festival.fi.muni.cz domain=www.festival.fi.muni.cz
+	respond @allowed 200
+	respond 404
+}
+
+https://festival.fi.muni.cz, https://www.festival.fi.muni.cz {
+	tls {
+		on_demand
+	}
+	import maintenance
+}
+
+http://festival.fi.muni.cz, http://www.festival.fi.muni.cz {
+	redir https://{host}{uri} 308
+}
+
+http:// {
+	import maintenance
+}
