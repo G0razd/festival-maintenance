@@ -11,6 +11,18 @@
 	}
 }
 
+(page) {
+	header {
+		Cache-Control "no-store"
+		X-Robots-Tag "noindex"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+	}
+	root * /srv
+	rewrite * /index.html
+	file_server
+}
+
 (maintenance) {
 	encode zstd gzip
 
@@ -21,22 +33,21 @@
 	}
 
 	handle {
-		header {
-			Cache-Control "no-store"
-			X-Robots-Tag "noindex"
-			X-Content-Type-Options "nosniff"
-			Referrer-Policy "no-referrer"
-		}
-		root * /srv
-		rewrite * /index.html
-		file_server
+		import page
 	}
 
 	handle_errors {
-		header Cache-Control "no-store"
-		root * /srv
-		rewrite * /index.html
-		file_server
+		import page
+	}
+}
+
+(site) {
+	reverse_proxy {$SITE_UPSTREAM:https://festival-26.deckhand.lemmaweb.com} {
+		header_up Host {http.reverse_proxy.upstream.host}
+	}
+
+	handle_errors 502 503 504 {
+		import page
 	}
 }
 
@@ -51,7 +62,7 @@ https://festival.fi.muni.cz, https://www.festival.fi.muni.cz {
 	tls {
 		on_demand
 	}
-	import maintenance
+	import {$FRONT_MODE:maintenance}
 }
 
 http://festival.fi.muni.cz, http://www.festival.fi.muni.cz {

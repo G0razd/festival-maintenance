@@ -4,6 +4,9 @@ services:
       context: .
       dockerfile: deploy/Dockerfile
     restart: unless-stopped
+    environment:
+      FRONT_MODE: ${FRONT_MODE:-maintenance}
+      SITE_UPSTREAM: ${SITE_UPSTREAM:-https://festival-26.deckhand.lemmaweb.com}
     expose:
       - "80"
       - "443"
@@ -24,13 +27,13 @@ services:
       traefik.http.routers.festival-maintenance-muni-http.priority: "10000"
       traefik.http.routers.festival-maintenance-muni-http.service: festival-maintenance
 
-      traefik.http.routers.festival-maintenance-test.rule: Host(`festival.deckhand.lemmaweb.com`)
+      traefik.http.routers.festival-maintenance-test.rule: Host(`${PREVIEW_HOST:-festival.deckhand.lemmaweb.com}`)
       traefik.http.routers.festival-maintenance-test.entrypoints: websecure
       traefik.http.routers.festival-maintenance-test.priority: "10000"
       traefik.http.routers.festival-maintenance-test.tls.certresolver: myresolver
-      traefik.http.routers.festival-maintenance-test.tls.domains[0].main: festival.deckhand.lemmaweb.com
+      traefik.http.routers.festival-maintenance-test.tls.domains[0].main: ${PREVIEW_HOST:-festival.deckhand.lemmaweb.com}
       traefik.http.routers.festival-maintenance-test.service: festival-maintenance
-      traefik.http.routers.festival-maintenance-test-http.rule: Host(`festival.deckhand.lemmaweb.com`)
+      traefik.http.routers.festival-maintenance-test-http.rule: Host(`${PREVIEW_HOST:-festival.deckhand.lemmaweb.com}`)
       traefik.http.routers.festival-maintenance-test-http.entrypoints: web
       traefik.http.routers.festival-maintenance-test-http.priority: "10000"
       traefik.http.routers.festival-maintenance-test-http.middlewares: festival-maintenance-https
