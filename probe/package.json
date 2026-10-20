@@ -1,0 +1,12 @@
+{
+  "name": "festival-status-probe",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node main.js",
+    "test": "node --test --test-concurrency=1"
+  }
+}

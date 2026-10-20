@@ -31,6 +31,19 @@
   a:hover, a:focus-visible { text-decoration-thickness: 2px; }
   .muted { color: #b8b9b6; }
   .links { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin: 0; padding: 0; list-style: none; }
+  h3 { margin: 1.75rem 0 .5rem; font-size: 1.0625rem; line-height: 1.3; font-weight: 600; }
+  .small { font-size: .875rem; }
+  .checks, .deploys { margin: 0; padding: 0; list-style: none; }
+  .checks li { display: flex; align-items: baseline; gap: .625rem; padding: .375rem 0; }
+  .checks .name { flex: 1; }
+  .checks .state { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .dot { flex: none; width: .625rem; height: .625rem; border-radius: 50%; background: #6b6b6b; transition: background-color .2s ease; }
+  [data-state="up"] .dot { background: #4caf6a; }
+  [data-state="down"] .dot { background: #e0574f; }
+  .deploys li { padding: .5rem 0; border-top: 1px solid #2c2c2c; }
+  .deploys li:first-child { border-top: 0; }
+  .deploys .meta { color: #b8b9b6; font-size: .875rem; }
+  code { font: .9375rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 </style>
 </head>
 <body>
@@ -51,6 +64,19 @@
     <p class="muted">Contact: doc. RNDr. Petr Sojka, Ph.D., <a href="mailto:sojka@fi.muni.cz">sojka@fi.muni.cz</a></p>
   </section>
 
+  <section aria-labelledby="status-title">
+    <h2 id="status-title">Stav služeb <span class="muted">· Service status</span></h2>
+    <ul class="checks">
+      <li data-check="site"><span class="dot"></span><span class="name">Web festivalu <span class="muted">· Festival website</span></span><span class="state">…</span></li>
+      <li data-check="cms"><span class="dot"></span><span class="name">Redakční systém <span class="muted">· CMS</span></span><span class="state">…</span></li>
+      <li data-check="archive"><span class="dot"></span><span class="name">Archiv <span class="muted">· Archive</span></span><span class="state">…</span></li>
+    </ul>
+    <p class="muted small" id="checked-at">Načítám stav… · Loading the status…</p>
+    <h3>Poslední nasazení <span class="muted">· Last deploys</span></h3>
+    <p class="muted small" id="deploys-empty">Zatím žádné. · None yet.</p>
+    <ol class="deploys" id="deploys"></ol>
+  </section>
+
   <section>
     <ul class="links">
       <li><a href="https://www.facebook.com/festival.fi.muni.cz/" rel="noopener">Facebook</a></li>
@@ -59,5 +85,6 @@
     </ul>
   </section>
 </main>
+<script src="/_status/app.js" defer></script>
 </body>
 </html>

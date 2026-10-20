@@ -17,14 +17,30 @@
 		X-Robots-Tag "noindex"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
+		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 	}
 	root * /srv
-	rewrite * /index.html
+	@document not path /_status/app.js
+	rewrite @document /index.html
 	file_server
+}
+
+(probe) {
+	reverse_proxy {$PROBE_UPSTREAM:status-probe:8080}
+}
+
+(status) {
+	handle /_status/status.json {
+		import probe
+	}
+	handle /_status/app.js {
+		import page
+	}
 }
 
 (maintenance) {
 	encode zstd gzip
+	import status
 
 	handle /archiv* {
 		reverse_proxy https://archiv.deckhand.lemmaweb.com {
@@ -42,8 +58,12 @@
 }
 
 (site) {
-	reverse_proxy {$SITE_UPSTREAM:https://festival-26.deckhand.lemmaweb.com} {
-		header_up Host {http.reverse_proxy.upstream.host}
+	import status
+
+	handle {
+		reverse_proxy {$SITE_UPSTREAM:https://festival-26.deckhand.lemmaweb.com} {
+			header_up Host {http.reverse_proxy.upstream.host}
+		}
 	}
 
 	handle_errors 502 503 504 {
@@ -67,6 +87,13 @@ https://festival.fi.muni.cz, https://www.festival.fi.muni.cz {
 
 http://festival.fi.muni.cz, http://www.festival.fi.muni.cz {
 	redir https://{host}{uri} 308
+}
+
+http://{$STATUS_HOST:status.deckhand.lemmaweb.com} {
+	handle /hooks/* {
+		import probe
+	}
+	import maintenance
 }
 
 http:// {

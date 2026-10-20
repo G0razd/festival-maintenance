@@ -1,0 +1,58 @@
+{
+  "object_kind": "push",
+  "event_name": "push",
+  "before": "4fe1773d0a83026899c5342453ef2a8418e042dc",
+  "after": "24dd291f6b7f63da81c612860e2c169875242d9f",
+  "ref": "refs/heads/deckhand",
+  "ref_protected": false,
+  "checkout_sha": "24dd291f6b7f63da81c612860e2c169875242d9f",
+  "message": null,
+  "user_id": 4242,
+  "user_name": "Festival Pusher",
+  "user_username": "pusher",
+  "user_email": "[REDACTED]",
+  "user_avatar": null,
+  "project_id": 1717,
+  "project": {
+    "id": 1717,
+    "name": "festival-26",
+    "description": null,
+    "web_url": "https://gitlab.fi.muni.cz/lemma/web/festival-26",
+    "avatar_url": null,
+    "git_ssh_url": "git@gitlab.fi.muni.cz:lemma/web/festival-26.git",
+    "git_http_url": "https://gitlab.fi.muni.cz/lemma/web/festival-26.git",
+    "namespace": "web",
+    "visibility_level": 20,
+    "path_with_namespace": "lemma/web/festival-26",
+    "default_branch": "master",
+    "ci_config_path": null,
+    "homepage": "https://gitlab.fi.muni.cz/lemma/web/festival-26",
+    "url": "git@gitlab.fi.muni.cz:lemma/web/festival-26.git",
+    "ssh_url": "git@gitlab.fi.muni.cz:lemma/web/festival-26.git",
+    "http_url": "https://gitlab.fi.muni.cz/lemma/web/festival-26.git"
+  },
+  "commits": [
+    {
+      "id": "24dd291f6b7f63da81c612860e2c169875242d9f",
+      "message": "fix: optimize images and harden the site nginx\n",
+      "title": "fix: optimize images and harden the site nginx",
+      "timestamp": "2026-10-06T23:37:45+02:00",
+      "url": "https://gitlab.fi.muni.cz/lemma/web/festival-26/-/commit/24dd291f6b7f63da81c612860e2c169875242d9f",
+      "author": { "name": "Festival Editor", "email": "[REDACTED]" },
+      "added": [],
+      "modified": ["docker/nginx.conf"],
+      "removed": []
+    }
+  ],
+  "total_commits_count": 1,
+  "push_options": {},
+  "repository": {
+    "name": "festival-26",
+    "url": "git@gitlab.fi.muni.cz:lemma/web/festival-26.git",
+    "description": null,
+    "homepage": "https://gitlab.fi.muni.cz/lemma/web/festival-26",
+    "git_http_url": "https://gitlab.fi.muni.cz/lemma/web/festival-26.git",
+    "git_ssh_url": "git@gitlab.fi.muni.cz:lemma/web/festival-26.git",
+    "visibility_level": 20
+  }
+}
