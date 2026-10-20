@@ -304,3 +304,49 @@ test("the status JSON names the checks without their URLs", async (t) => {
   assert.deepEqual(JSON.parse(text).checks, [{ key: "site", ok: true, status: 200, ms: 40, error: null }]);
   assert.ok(!text.includes("lemmaweb.com"));
 });
+
+test("a failed poll after the start window, before any build is seen, keeps polling", async (t) => {
+  const fresh = () => new Date().toISOString();
+  const { post, log, settle } = await harness(t, {
+    deckhandOverrides: { apiToken: API_TOKEN, projectId: "project-1", serviceId: "service-1" },
+    timingOverrides: { buildStartTimeoutMs: -1 },
+    responses: [
+      ACCEPTED,
+      { status: 502, body: { message: "Bad Gateway" } },
+      () => Response.json([{ serviceId: "service-1", status: "success", startedAt: fresh() }]),
+    ],
+  });
+
+  await post(pushPayload());
+  await settle();
+
+  assert.equal(log.list()[0].status, "success");
+});
+
+test("a seen build that drops out of the list does not become no-build", async (t) => {
+  const fresh = () => new Date().toISOString();
+  const { post, log, settle } = await harness(t, {
+    deckhandOverrides: { apiToken: API_TOKEN, projectId: "project-1", serviceId: "service-1" },
+    timingOverrides: { buildStartTimeoutMs: -1 },
+    responses: [
+      ACCEPTED,
+      () => Response.json([{ serviceId: "service-1", status: "building", startedAt: fresh() }]),
+      () => Response.json([]),
+      () => Response.json([{ serviceId: "service-1", status: "failed", startedAt: fresh() }]),
+    ],
+  });
+
+  await post(pushPayload());
+  await settle();
+
+  assert.equal(log.list()[0].status, "failed");
+});
+
+test("a body far over the limit still gets its 413", async (t) => {
+  const { post, log } = await harness(t, { appOptions: { maxBodyBytes: 1024 } });
+
+  const response = await post({ ...pushPayload(), padding: "x".repeat(3 * 1024 * 1024) });
+
+  assert.equal(response.status, 413);
+  assert.equal(log.list().length, 0);
+});

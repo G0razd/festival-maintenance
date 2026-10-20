@@ -85,6 +85,7 @@
 			@unrouted {
 				status 404
 				header Content-Type text/plain*
+				header Content-Length 19
 			}
 			handle_response @unrouted {
 				import outage
@@ -93,7 +94,7 @@
 	}
 
 	handle_errors 502 503 504 {
-		import page
+		import outage
 	}
 }
 

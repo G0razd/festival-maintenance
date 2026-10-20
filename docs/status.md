@@ -21,7 +21,7 @@
 | --- | --- |
 | Token missing or wrong | `401` |
 | Not POST | `405`, `Allow: POST` |
-| Body over 5 MB | `413`, connection closed |
+| Body over 5 MB | `413`; the rest is read and dropped, never kept |
 | Body is not JSON | `400` |
 | Other project, other branch, deleted branch, pipeline still running, other event | `200 {"result":"ignored","reason":…}` |
 | Push (default) | `202 {"result":"queued"}` |
@@ -49,7 +49,8 @@
 - a failed DeckHand call with one retry, recovery on the retry, no retry on 401, and no matched service;
 - the final status from build logs, also across a failed poll mid-build;
 - an unexpected error inside a deploy;
-- a body over the limit (413) and a JSON without the check URLs;
+- a body over the limit (413, also for a body far larger than the socket buffer) and a JSON without the check URLs;
+- tracking across a failed poll before any build is seen, and a seen build that drops out of the list;
 - pipeline handling and `DEPLOY_ON=pipeline`;
 - no secrets in the JSON.
 

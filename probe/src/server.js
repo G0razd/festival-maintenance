@@ -25,15 +25,9 @@ function readBody(req, maxBytes) {
     let size = 0;
     req.on("data", (chunk) => {
       size += chunk.length;
-      if (size > maxBytes) {
-        req.removeAllListeners("data");
-        req.pause();
-        reject(new TooLarge());
-        return;
-      }
-      chunks.push(chunk);
+      if (size <= maxBytes) chunks.push(chunk);
     });
-    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("end", () => (size > maxBytes ? reject(new TooLarge()) : resolve(Buffer.concat(chunks).toString("utf8"))));
     req.on("error", reject);
   });
 }
@@ -67,10 +61,7 @@ export function createApp({ gitlab, checker, log, deployer, now = () => Date.now
     try {
       body = JSON.parse(await readBody(req, maxBodyBytes));
     } catch (error) {
-      if (error instanceof TooLarge) {
-        res.on("finish", () => req.destroy());
-        return send(res, 413, { error: "payload too large" }, { Connection: "close" });
-      }
+      if (error instanceof TooLarge) return send(res, 413, { error: "payload too large" });
       return send(res, 400, { error: "invalid JSON" });
     }
 
